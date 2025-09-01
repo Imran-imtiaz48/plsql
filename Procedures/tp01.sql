@@ -1,43 +1,41 @@
-create or replace procedure comm_employe(
-  num in employees.employee_id%type , tauxcomm in decimal) 
-  as 
-  ---- when we need to declare a variable we must use 'as' ;;
-  ---  we use 'is' if no declaration needed !
-  variable employees.commission_pct%type;
-begin
+CREATE OR REPLACE PROCEDURE comm_employe(
+    num       IN employees.employee_id%TYPE,
+    tauxcomm  IN NUMBER
+) AS
+    v_comm employees.commission_pct%TYPE;
+BEGIN
+    -- Get current commission
+    SELECT commission_pct
+    INTO v_comm
+    FROM employees
+    WHERE employee_id = num;
 
-    select commission_pct
-      into variable
-      from employees
-     where employee_id = num;
+    -- Check if commission is null or zero
+    IF v_comm IS NULL OR v_comm = 0 THEN
+        DBMS_OUTPUT.PUT_LINE('Commission est nulle !');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Commission actuelle = ' || TO_CHAR(v_comm));
 
-    if to_number(variable,'99999') = 0 then 
-            dbms_output.put_line('Commission est nulle !');
-    else
-            dbms_output.put_line('Commission = ' || to_char(variable));
-            
-            update employees set commission_pct = to_char (to_number(variable,'99999') * (1.00 + tauxcomm)) 
-            where employee_id = num;
-            commit ;
-----------after updating :::
-                select commission_pct
-                into variable
-                        from employees
-                where employee_id = num;
+        -- Update commission with increase
+        UPDATE employees
+        SET commission_pct = v_comm * (1 + tauxcomm)
+        WHERE employee_id = num;
 
-            dbms_output.put_line('Commission = ' || to_char(variable));
+        COMMIT;
 
-    end if;
+        -- Confirm update
+        SELECT commission_pct
+        INTO v_comm
+        FROM employees
+        WHERE employee_id = num;
 
-exception
+        DBMS_OUTPUT.PUT_LINE('Nouvelle commission = ' || TO_CHAR(v_comm));
+    END IF;
 
-  when no_data_found then
-
-        dbms_output.put_line('No employee Found !') ;
-
-   when others then 
-        
-        dbms_output.put_line('Other exceptions Found !');
-
-end comm_employe;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('Aucun employé trouvé avec l''ID ' || num);
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Erreur inattendue : ' || SQLERRM);
+END comm_employe;
 /
